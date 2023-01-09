@@ -60,6 +60,12 @@ xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence http://xmlns.jcp.org
 - JPA는 특정 데이터베이스에 종속 X
 - 각각의 데이터베이스가 제공하는 SQL 문법과 함수는 조금씩 다름
 - 방언 : SQL 표준을 지키지 않는 특정 데이터베이스만의 고유한 기능
-- hibernate.dialect를 통해서 어떤 DB를 쓰는지 파악하고 JPA가 사용하도록 통일 시켜준다.
+- hibernate.dialect를 통해서 어떤 DB를 쓰는지 파악하고 JPA가 사용할 수 있게 맞춰준다.
 ![image](https://user-images.githubusercontent.com/94176133/211211396-e383b49d-e04a-4637-a81b-6757e6180a2d.png)
 
+
+### JPA 구동방식
+![image](https://user-images.githubusercontent.com/94176133/211237212-fe102036-69f3-4cfb-bdda-6c2d7d86d9c2.png)
+
+JPA가 META-INF/persistence.xml 을 읽어서 EntitiyManagerFactory 클래스를 만든다.  
+EntityManagerFactory에서 EntityManager을 생성하여 사용한다.
