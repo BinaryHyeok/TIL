@@ -1,152 +1,129 @@
-# WebRTC
+# Web RTC
 
-- WebRTC(Web Real-Time Communications)
-- 웹, 앱에서 별 다른 소프트웨어 없이, 카메라, 마이크 등을 사용해서 실시간 커뮤니케이션을 제공해주는 기술
-- 우리가 잘 알고있는 화상통화, 화상 공유들을 구현할 수 있는 오픈소스
-- 비디오, 음성 및 일반 데이터가 P2P방식으로 피어간의 전송되도록 지원
-- JavaScript API로 제공
-- 용어 및 개념
-  - DataStream, STUN / TURN servers, signaling, JSEP, ICE, SIP, SDP, NAT, UDP/TCP, network socket 등
+WebRTC(Web Real-Time Communications)
+  
+![](https://velog.velcdn.com/images/jsb100800/post/eb72ec7d-c0b9-4038-9851-df1b27524b7e/image.webp)
 
-<br>
+WebRTC는 별도의 플러그인 설치 없이 실시간으로 미디어(오디오, 비디오, 텍스트, 파일 등)를 최대한 서버를 거치치 않고 Peer간 전송할 수 있는 오픈소스 웹 기반 기술이다.
 
-## WebRTC의 장점과 단점
-### 장점
-1. Latency가 짧다.  
-우리가 흔히 알고있는 인스타라이브, 유튜브라이브, 트위치 등은 RTMP를 사용하여 실시간 스트리밍을 하고 있다. RTMP보다 WebRTC는 낮은 Latency를 가지고 있고 거의 지연시간 없는 REAL-TIME과 비슷한 방송을 할 수 있다.
+## 서버의 종류
+### 1. Signaling Server 
 
-2. 별 다른 소프트웨어 없이 실시간 커뮤니티가 가능하다.  
-웹/앱으로 방송을 키고 싶을 때, 별도의 플러그 인이나 미디어 송출 관련 소프트웨어를 따로 설치할 필요가 없다.
+Signaling Server는 WebRTC에서 가장 기본이 되는 서버라고 할 수 있다.  
+서로 다른 네트워크에 있는 Peer들을 연결시키기 위해서는 Session Control Message, Error Message, Codec, Bandwith 등 다양한 정보가 필요하다.  
 
-3. 개발 진입장벽이 낮다.
+결국 WebRTC 기수을 활용해서 Peer끼리 연결하기 위해서는 위의 정보들이 먼저 각각의 Peer들에게 전달돼야 한다는 것이며 이 프로세스를 Signaling 이라고 한다.  
 
-4. 무료
+이러한 정보들을 중계해주는 역할을 하는 서버가 바로 Signaling Server이다.  
+또한 위의 정보들은 SDP(Session Description Protocol)을 사용한다.  
 
-### 단점
-1. 크로스 브라우징 문제  
-WebRTC는 현재 크롬, 오페라, 파이어폭스 뿐만 아니라 안드로이드, iOS등 브라우저, 앱에서 활용할 수 있다. 그러나 사람들이 잘 사용하지 않는 브라우저나 최신 버전을 사용하지 않는 사용자는 사용이 불가능하다는 단점이 있다.  
+WebRTC와는 별개로 Signaling Server는 직접 구축해야하고, 보통 클라이언트 사이드와 WebSocket을 사용하여 통신한다.  
 
-2. STUN/TURN 서버 필요  
-Peer to Peer 통신을 하기 위해서는 사용자의 IP주소를 알아야한다. 하지만, 대부분의 사용자는 방화벽등을 사용하고 다른 네트워크 상에서 연결이 이루어지기 위해서는 STUN/TURN 서버가 꼭 필요하다.
+Signaling Server를 중심으로 WebRTC의 동작 과정을 설명해보면 다음과 같다.
 
-<br>
-
-## WebRTC의 통신원리
-- Peer to Peer communication(P2P통신)
-  - Peer to Peer 방식은 동등 계층간 통신방식으로 클라이언트, 서버의 개념없이 동등한 노드들로 구성되어 데이터를 주고받는 형식으로 되어있다.
-- MCU, SFU : 대규모 서비스를 구축할 때 사용하는 방식, 중앙 서버를 두어 트래픽 중계하도록 함
+> Client와 Server 사이 통신은 WebSocket을 사용한다.
+> ![](https://velog.velcdn.com/images/jsb100800/post/530ee447-7034-4542-878e-19baba3b116f/image.png)
+> 1. Client Side의 A Client(Peer)에서 Signaling Server로 연결에 필요한 A Client의 데이터를 보낸다.  
+-> Signling Offer
+> 2. Server Side에서, Signaling Server에 연결된 모든 세션들에게 A Client의 데이터를 전달한다.
+> 3. Client Side의 B Client(Peer)에서 A Client의 데이터를 활용해서 연결에 필요한 일련의 작업을 한 후, B Client의 데이터를 Signaling Server로 보낸다.  
+> -> Signaling Answer
+> 4. Server Side에서, A Client의 세션에게 B Client의 데이터를 전달한다.
+> 5. 각각의 데이터를 활용하여 WebRTC가 A Client와 B Client가 연결한다. 
 
 <br>
 
-## WebRTC 통신 방식
-두 기기가 실시간 소통을 하기 위해서는 다음과 같은 사항이 필요하다.
-1.  기기의 스트리밍 오디오 / 비디오 / 데이터를 가져올 수 있을 것
-2. 소통하고자 하는 기기의 IP 주소와 포트 등 네트워크 데이터가 필요
-3. 에러보고, 세션 초기화를 위해 신호 통신을 관리해야 함
-4. 서로 소통할 수 있는 해상도인지, 코덱은 맞는지 capability 정보 교환
-5. 실제 연결을 맺음
-6. 이후 스트리밍 오디오 / 비디오 / 데이터를 주고 받을 수 있어야 함.
+### 2. STUN Server(Session Traversal Utilities for NAT)
+위의 Signaling Server을 이용해서 Peer간의 통신이 가능하다.  
+하지만 통신 중간에 방화벽, NAT 환경에 놓여 있는 Peer에 대해서는 Signaling이 불가능하다.  
+이때 이어 설명할 STUN Server와 TURN Server가 필요하다.  
 
-이를 위해서 WebRTC는 다음과 같은 API를 제공한다.
-- MediaStream : 사용자의 카메라 혹은 마이크 등 input 기기의 데이터 스트림에 접근한다.
-- RTCPeerConnection : 암호화 / 대역폭 관리 기능. 오디오 / 비디오 연결을 한다.
-- RTCDataChannel : 일반적인 데이터 P2P 통신
+STUN Server는 클라이언트 자신의 공인 IP(Public Address)를 알려주는 서버이다.
+Client에서 STUN Server로 요청을 보내서 자신의 공인 IP를 확인한 후, 해당 IP를 활용하여 Signaling하게 된다.  
 
-이는 위 사항의 일부만 만족시키므로, 나머지는 Signaling 이라는 과정으로 관리한다.  
-즉, WebRTC를 사용한 통신은 두 갈래로 설명할 수 있다.
-
-- Signaling을 통해 통신할 peer 간 정보를 교환한다. (네트워크 정보, capability 정보, 세션 수립 등)
-- WebRTC를 사용해 연결을 맺고, peer 기기에서 데이터를 가져와 교환
-
-## 시그널링(Signaliing)
-WebRTC는 브라우저 간에 스트리밍 데이터를 교환하기 위해 RTCPeerConnection를 사용한다. 그리고 통신 조정 및 메시지를 컨트롤 하는 메커니즘인 시그널링을 필요로 한다. 즉 시그널링은 통신을 조율할 메시지를 주고 받은 일련의 과정을 의미한다.  
-
-시그널링의 역할은 다음과 같다.
--  Session control messages : 통신의 초기화, 종료, 그리고 에러 리포트
-- Network configuration : 외부에서 보는 내 컴퓨터의 IP 주소와 포트
-- Media capabilities : 내 브라우저와 상대 브라우저가 사용 가능한 코덱, 그리고 해상도
-
-위 작업은 스트리밍이 시작되기 전에 완료되어야 한다. 구체적으로 살펴보면 아래와 같다.
-1. 네트워크 정보 교환(Network configuration)
-    - ICE 프레임워크를 사용하여 서로의 IP와 포트를 찾는 과정
-    - candidate에 서로를 추가
-2. 미디어 
-    - 미디어 정보 교환은 offer와 answer로직으로 진행
-    - 형식은 SDP(Session Description Protocol)  
-
-그리고 위에서 말한 Session Control messages는 위 과정에서 필요한 마이너한 과정들을 채워준다.  
-시그널링을 성공적으로 마치면, 실제 데이터(미디어, 영상, 음성 등)는 P2P 또는 중계서버를 거쳐서 통신하게 된다.
+> STUN Server같은 경우는 단순히 정보 제공을 위한 서버라 트래픽 발생이 현저히 낮기 때문에 웬만하면 무료 STUN Server를 사용해도 문제가 크게 없다고 한다.
 
 <br>
 
-## 서버의 역할
-WebRTC에서 왜 서버가 필요한지 의문이 들 수 있다. 하지만 P2P로만 WebRTC 연결을 한다고 해도 서버가 필요한 경우가 있고 이 기술에서 서버는 다음과 같은 역할을 한다.
-- 사용자 탐색과 통신 / Signaling
-- NAT / 방화벽 탐색
-- Peer to Peer 통신 서버 시 중계서버
+### 3. TURN(Traversal Using Relays around NAT) Server
+STUN Server를 활용하면 80% 정도는 Signaling을 통한 연결이 가능하다고 한다.  
+하지만, 그렇지 못한 20%의 경우가 존재하는데, 보호정책이 강한 NAT나 라우터, 보통 Symmetric NAT환경에서 나타난다고 한다.  
 
-> NAT(Network Address Translation)은 기기에 공인 IP를 부여하는 기술이다. 라우터에 설정하는데, 라우터는 공인 IP를 갖고, 라우터에 연결된 모든 기기는 사설 IP를 갖는다. 기기가 요청할 것이 생기면, 라우터의 고유한 포트를 사용해서 사설 IP에서 공인 IP 로 변환한다(translation). 어떤 라우터는 접근할 수 있는 노드를 제한 할 수 있다.
+TURN Server는 Symmetric NAT 제한을 우회할 수 있게끔 해주는 기능을 한다.  
+**결국 TURN Server가 Peer간의 통신 채널을 중계해주는 역할을 하며, WebRTC의 가장 큰 특징인 P2P 방식에서 벗어나게 된다.**
 
-ICE 프레임워크가 등장한다. ICE 프레임워크는 기기를 발견하고 연결하기 위한 프레임워크이다.
-1. ICE는 UDP를 통해 기기들을 서로 직접 연결시도한다.
-    1. 연결O -> 이제 미디어 교환을 한다.
-    2. 연결X -> NAT 혹은 방화벽 뒤에 있나 확인한다.
-2. 기기가 NAT 뒤에 있다면 STUN 서버가 이를 해결해 줄 수 있다.
-    - STUN(Session Traversal Utilities for NAT)는 기기의 공인 IP를 알려준다. 기기의 NAT가 직접 연결을 허용하는지, 아닌지 파악하는 역할도 한다.
-    - 클라이언트는 STUN 서버에 요청을 보낸다. STUN 서버는 클라이언트 공인 주소와, 클라이언트가 NAT뒤에서 접근이 되는지 알려준다.
-    - 그 이후에 직접 다른 기기와 통신한다.
-      1. 연결O -> 미디어 교환한다.
-      2. 연결X -> TRUN서버 사용
-    
-  어떤 라우터는 Symmetric NAT를 적용한다.
+때문에 Peer간 모든 트래픽을 중계해주기 때문에 상당한 부하를 감당해야하며, 비용 또한 크게 발생할 것이다.  
 
-  **Symmetric NAT** : 목적지에 따라서 같은 private IP의 노드를 다른 공인 IP와 포트로 매핑해준다. 이런 경우 라우터는 이전에 연결했던 기기에서의 연결만 허용한다.
-  - TURN(Traversal Using Relays around NAT)는 Symmetric NAT의 제약조건을 우회하기 위해서 만들어졌다. TURN서버와 연결을 맺고, 이 서버가 모든 교환 과정을 중개해준다. 모든 기기는 TURN 서버로 패킷을 보내고, 서버가 이를 포워딩한다. 당연히, 오버헤드가 있고 =) 다른 대안이 없을 때만 사용한다.
-
-  <br>
-
-  ## STUN 과 TURN 이란?
-  WebRTC는 P2P로 디자인 되어 있음. 그래서 유저들은 가능한 최대한 많은 직접적인 경로로 연결가능하다. 실제 사용환경에선 직접 연결이 실패했을 때의 대비책이 필요하다. 대비책의 한 과정으로, WebRTC는 STUN서버를 사용해 컴터를 IP를 가져오고 TURN 서버는 p2p 통신이 실패할 경우 릴레이 서버로 동작한다.
+**즉, Local IP와 Public IP 둘다로도 연결할 수 없는 경우 TURN Server을 최후의 수단으로 사용하게 된다.**  
 
 <br>
 
-## 본격적인 WebRTC부분
-RTCPeerConnection은 당사자들 간 데이터를 안정적이고 효율적으로 통신하게 해주는 요소이다. 
+### 4. Media Server
+WebRTC의 구현 방식에는 크게 3가지로 Mesh, SFU, MCU 방식이 있다.  
+지금까지 말한 방식은 Mesh 방식으로 서버의 자원이 적게 들지만 Peer 수가 늘어날 수록 Client 사이드의 과부하게 급격하게 증가하는 방식이다. 따라서 소규모 연결에 적합할 것이다.  
 
-아래 그림에서 초록색 부분은, 원래라면 개발자가 처리해야 할 부분이다.
-![캡처](https://user-images.githubusercontent.com/94176133/211989803-8702a755-c8f5-4dc6-97c4-2bffacb9e586.PNG)
+Mesh 방식에서는 Media Server가 필요하지 않다.
+Media Server는 SFU, MCU 방식의 WebRTC에서 필요한 서버이다.  
 
-원래라면 다음 사항을 직접 해야한다.
-- 패킷 로스를 가려주고
-- 에코 캔슬링
-- 대역폭 조절
-- dynamic jitter buffering
-- automatic gain control
-- 노이즈 제거와 압축
-- 이미지 클리닝
+각각의 Peer들은 Media Server에게 미디어 스트림들을 쏴주고 Media Server에서 미디어 트래픽을 관리하여 각각의 Peer에게 다시 배포해주는 멀티미디어 미들웨어이다.  
+
+즉, WebRTC의 특징은 P2P 통신이 아니게 되는 것은 TURN Server와 유사하다고 할 수 있고, 클라이언트에 부하가 현저히 줄어드는 대신 서버의 부하가 커지며 구현의 난이도가 높다.  
 
 <br>
 
-### WebRTC는 안전한가?
-WebRTC 컴포넌트에서 암호화는 필수, 그리고 Javascript WebRTC API는 HTTPS 환경에서만 사용할 수 있음. 시그널링 메커니즘은 정의되어 있지 않아서 알아서 보안성 있게 작성해야 된다.
+## WebRTC 구현 방식 종류
+![캡처](https://user-images.githubusercontent.com/94176133/211991461-bf472326-edc9-4ca3-92a0-bbef7c7ce04f.PNG)
 
-### 다자간 통신
-WebRTC는 기본적으로 P2P, 두 단말이 서로 1:1 통신을 하게 되어있다. 따라서 대규모 방송 서비스를 구축하거나 컨텐츠 가공이 필요한 경우 중앙 미디어 서버를 구축할 필요성이 생긴다. 이런 목적에 따라 SFU, MCU 아키텍처를 고려해볼 수 있다.
+### 1. Mesh
+특징  
+- Signaling Server, STUN Server, TRUN Server를 사용하는 전형적인 P2P WebRTC 구현 방식이다.
+- 1:1 연결 혹은 소규모 연결에 적합하다.  
 
-### P2P
-중앙 미디어 서버 없이 종단 간 직접 연결하므로, 비용 측면에서 이득이 있다. 다만 peer수가 증가할 수록 개별 기기의 높은 성능을 요구한다. 1:1, 최소한 소규모 미디어 교환에 적합하다.
+장점
+- Peer간의 Signaling 과정만 서버가 중계하기 떄문에 서버의 부하가 적다.
+- 직접적으로 Peer간 연결되기 때문에 실시간 성이 보장된다.
+  
+단점
+- 연결된 Client의 수가 늘어날 수록 Client의 과부하가 급격하게 증가한다.
+- 간단하게 생각해봐도 N명이 접속한 화상회의라면, 클라이언트 각각에서 N-1개의 연결을 유지해야 하기 떄문이다.
 
-### MCU(Multipoint Control Unit)
-한쪽 Peer에 서버를 두고, 들어오는 트래픽을 서버에서 믹싱해서 다시 내보내는 방식이다. 클라이언트와 네트워크의 부담이 줄어드는 반면, 중앙서버의 컴퓨팅 파워가 많이 요구된다. 이는 서버 운용 비용이 높아, WebRTC와 같은 실시간성 보장이 우선인 서비스의 경우 장점이 상쇄된다.
 
-### SFU(Selective Forwarding Unit)
- 믹싱하지않고 트래픽을 선별적으로 배분해서 보내주는 방식. 각 peer 연결 할당과 encrypt / decrypt역할을 서버가 담당한다. 1:N 스트리밍 구조에 적합하다고 한다.
+<br>
 
- ![캡처](https://user-images.githubusercontent.com/94176133/211991461-bf472326-edc9-4ca3-92a0-bbef7c7ce04f.PNG)
+### 2. MCU(Multi-point Control Unit) 방식
+특징
+- 다수의 송출 미디어 데이터를 Media Server에서 혼합(Multiplexing) 또는 가공(Transcoding)하여 수신측으로 전달하는 방식
+- P2P방식 X, Server와 Client간의 peer을 연결한다.
+- Media Server의 매우 높은 컴퓨팅 파워가 요구된다.
+  
+장점
+- Client의 부하가 크게 줄어든다.
+- N : M 구조에서 사용 가능하다.
+
+단점
+- 실시간성이 저해된다.
+- 구현 난이도가 상당하게 어렵고, 비디오와 오디오를 혼합 및 가공하는 과정에서 고난도 기술과 서버의 큰 자원이 필요하다.
+
+<br>
+
+### 3. SFU(Selective Forwarding Unit) 방식
+특징
+- 각각의 Client간 미디어 트래픽을 중계하는 Media Server을 두는 방식
+- P2P방식 X, Server와 Client간의 peer를 연결한다.
+- Server에게 자신의 영상 데이터를 보내고, 상대방의 수만큼 데이터를 받는 형식
+- 1:N 혹은 소규모 N:M 형식의 실시간 스트리밍에 적합
+  
+장점
+- Mesh 방식보다 느린 것은 어쩔수 없다. 하지만 비슷한 수준의 실시간성을 유지할 수 있다.
+- Mesh 방식보다는 Client의 부하가 줄어든다.
+
+단점
+- Mesh 방식보다는 서버의 부하가 늘어난다.
+- 대규모 N:M 구조에서는 여전히 Client의 부하가 크다.
+
 <br>
 
 
 
 [참고자료]  
-https://gh402.tistory.com/38  
-https://velog.io/@skyni/WebRTC%EC%97%90-%EB%8C%80%ED%95%9C-%EC%A0%95%EB%A6%AC
+https://velog.io/@jsb100800/%EA%B0%9C%EB%B0%9C-WebRTC-SpringBoot-Vue.js%EB%A5%BC-%ED%99%9C%EC%9A%A9%ED%95%9C-Group-Video-Call
