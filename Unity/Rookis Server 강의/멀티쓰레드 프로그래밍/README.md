@@ -269,3 +269,264 @@ namespace ServerCorePractice
 2. 가시성
    > 값을 저장한 후 메모리 배리어를 호출하면 메모리에 해당 값을 쓰고, 값을 로드 하기 전에 메모리 배리어를 호출 하였다면, 메모리에서 값을 가져온다.  
    > **동기화 작업**이라고 할 수 있다.
+
+<br>
+
+# Interlocked
+
+number++: 라는 동작은 실질적으로 다음과 같다.
+
+1. int temp = number;
+2. temp = temp + 1;
+3. number = temp;
+
+여기서 멀티스레드의 경우 순서가 꼬여 정상적으로 동작하지 않을 수 있다.  
+이때 Interlocked를 이용하여 문제를 해결할 수 있다.
+
+```c#
+using System;
+using System.Threading;
+
+namespace ServerCorePractice
+{
+    class Program
+    {
+        static int number = 0;
+
+        static void Thread_1()
+        {
+            for(int i  = 0; i < 100000; i++)
+            {
+                // 원자적으로 덧셈
+                // All or Nothing
+                Interlocked.Increment(ref number);
+                //number++;
+            }
+        }
+
+        static void Thread_2()
+        {
+            for(int i = 0; i < 100000; i++)
+            {
+                // 원자적 뺼셈
+                // All or Nothing
+                Interlocked.Decrement(ref number);
+                //number--;
+            }
+        }
+
+        static void Main(string[] args)
+        {
+            Task t1 = new Task(Thread_1);
+            Task t2 = new Task(Thread_2);
+            t1.Start();
+            t2.Start();
+
+            Task.WaitAll(t1, t2);
+
+            Console.WriteLine(number);
+        }
+    }
+}
+```
+
+<br>
+
+# Lock 기초
+
+몇십, 몇백줄을 Interlocked를 사용하기에는 한계가 있다.  
+다음과 같은 코드는 Enter과 Exit사이에서 return이나 에러 발생 시 Exit를 실행하지 않게된다.
+
+```c#
+Monitor.Enter(_obj); // 문을 잠구는 행위
+
+number++;
+
+Monitor.Exit(_obj); // 잠금을 풀어준다.
+```
+
+try-catch-finally를 사용하면 해결 가능하며, lock은 다음을 포함하고 있다.
+
+```c#
+using System;
+using System.Threading;
+
+namespace ServerCorePractice
+{
+    class Program
+    {
+        static int number = 0;
+        static object _obj = new object();
+
+        static void Thread_1()
+        {
+            // lock을 걸어준다. 다음과 같이 사용하면 데드락 방지 가능
+            lock (_obj)
+            {
+                number++;
+            }
+        }
+
+        static void Thread_2()
+        {
+           lock (_obj)
+            {
+                number--;
+            }
+        }
+
+        static void Main(string[] args)
+        {
+            Task t1 = new Task(Thread_1);
+            Task t2 = new Task(Thread_2);
+            t1.Start();
+            t2.Start();
+
+            Task.WaitAll(t1, t2);
+
+            Console.WriteLine(number);
+        }
+    }
+}
+```
+
+<br>
+
+# Lock 구현
+
+## SpinLock
+
+무작정 기다린다.
+
+```c#
+using System;
+using System.Threading;
+
+namespace ServerCorePractice
+{
+    class SpinLock
+    {
+        volatile int _locked = 0;
+
+        // Lock이 풀릴 때 까지 계속 돈다
+        public void Acquire()
+        {
+            while (true)
+            {
+                // Exchange를 통해서 locked에 1의 값을 넣는다
+                // 이때 이전의 값은 original이라는 변수로 뺴내고 만약 이 값이 0이라면 아무도 스레드를 사용하고 있지 않으므로 사용한다.
+                //int original = Interlocked.Exchange(ref _locked, 1);
+                //if (original == 0)
+                //    break;
+
+                int expected = 0;
+                int desired = 1;
+                // expected값과 같다면 desired값을 넣어준다.
+                if (Interlocked.CompareExchange(ref _locked, desired, expected) == expected)
+                    break;
+
+                // 스레드를 누가 사용하고 있네? -> 쉬고올게
+                // 무조건 휴식 -> 무조건 1ms 정도 쉬고 싶을 때
+                //Thread.Sleep(1);
+                // 조건부 양보 -> 나보다 우선순위가 낮은 애들에게는 양보 불가 -> 우선순위가 나보다 같거나 높은 스레드가 없으면 다시 본인이 사용
+                //Thread.Sleep(0);
+                // 관대한 양보 -> 관대하기 양보 할테니깐 실행 가능한 스레드가 있다면 실행 -> 실행 가능한 스레드가 없다면 본인이 사용
+                Thread.Yield();
+
+            }
+        }
+
+        public void Release()
+        {
+            _locked = 0;
+        }
+    }
+
+    class Program
+    {
+
+        static int _num = 0;
+        static SpinLock _lock = new SpinLock();
+
+        static void Thread_1()
+        {
+            for(int i = 0; i < 100000; i++)
+            {
+                _lock.Acquire();
+                _num++;
+                _lock.Release();
+            }
+        }
+
+        static void Thread_2()
+        {
+            for (int i = 0; i < 100000; i++)
+            {
+                _lock.Acquire();
+                _num--;
+                _lock.Release();
+            }
+        }
+
+
+        static void Main(string[] args)
+        {
+            Task t1 = new Task(Thread_1);
+            Task t2 = new Task(Thread_2);
+
+            t1.Start();
+            t2.Start();
+
+            Task.WaitAll(t1, t2);
+
+            Console.WriteLine(_num);
+        }
+    }
+}
+```
+
+## AutuResetEvent
+
+```c#
+class Lock
+    {
+        // 처음 상태를 선택하여 시작 가능
+        AutoResetEvent _available = new AutoResetEvent(true);
+
+        public void Acquire()
+        {
+            // 입장 시도 -> 자동으로 문을 잠군다
+            _available.WaitOne();
+        }
+
+        public void Release()
+        {
+            // flag = true
+            _available.Set();
+        }
+    }
+```
+
+## ManualResetEvent
+
+```c#
+ class Lock
+    {
+        // 처음 상태를 선택하여 시작 가능
+        ManualResetEvent _available = new ManualResetEvent(true);
+
+        public void Acquire()
+        {
+            // 입장 시도 -> 자동으로 문을 잠구지 않는다
+            _available.WaitOne();
+        }
+
+        public void Release()
+        {
+            // flag = true
+            _available.Set();
+        }
+    }
+```
+
+Auto & Manual 둘 다 커널 단으로 가서 요청을 해야되므로 시간이 오래걸린다.
