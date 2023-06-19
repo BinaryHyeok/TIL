@@ -1,0 +1,4 @@
+# 운영체제 시작하기
+
+![8044AF3E-F385-4438-A9DF-23D7BE5E0149](https://github.com/BinaryHyeok/TIL/assets/94176133/fbb67141-31de-43b4-883c-a954f82f7e23)
+![F1D6E152-C94D-4032-AFF6-0BC303E87F29](https://github.com/BinaryHyeok/TIL/assets/94176133/d6e87263-c457-4720-b428-8c9d068588d6)
